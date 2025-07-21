@@ -111,7 +111,7 @@ export default function WaitingRoom({ socket, room, username }: WaitingRoomProps
 
           {showBotOption && (
             <div className="space-y-2">
-              <p className="text-sm text-center text-gray-400">No other players joined. Want to play with a bot?</p>
+              { room.players.length >= 2 ? "" : <p className="text-sm text-center text-gray-400">No other players joined. Want to play with a bot?</p>}
               <Button onClick={addBot} className="w-full border-blue-500 hover:border-blue-600" variant="outline">
                 Add Bot Player
               </Button>

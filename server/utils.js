@@ -172,21 +172,9 @@ function simulateBotGuess(roomCode, word, io, rooms) {
   }
 }
 
-function endCurrentTurn(roomCode, io, rooms) {
-  // Implementation of endCurrentTurn
-  const room = rooms.get(roomCode)
-  if (!room) return
-
-  // Logic to end the current turn
-  room.turnStartTime = Date.now()
-  // Emit event to start the next turn
-  io.to(roomCode).emit("next-turn")
-}
-
 module.exports = {
   generateRoomCode,
   getRandomWords,
   createBotPlayer,
   simulateBotGuess,
-  endCurrentTurn,
 }

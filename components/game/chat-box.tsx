@@ -46,7 +46,7 @@ export default function ChatBox({ messages, onSendMessage, disabled, currentWord
       </CardHeader>
       <CardContent className="flex-1 flex flex-col space-y-4">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-2 max-h-80">
+        <div className="flex-1 overflow-y-auto space-y-2 max-h-90">
           {messages.length === 0 ? (
             <div className="text-center text-gray-500 text-sm">
               {disabled ? "You're drawing! Others will guess here." : "Start guessing!"}

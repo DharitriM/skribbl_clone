@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter, Pacifico } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const pacifico = Pacifico({ weight: "400", subsets: ["latin"], variable: "--font-cursive" })
@@ -15,23 +16,6 @@ export const metadata: Metadata = {
   },
 }
 
-// export default function RootLayout({
-//   children,
-// }: Readonly<{
-//   children: React.ReactNode
-// }>) {
-//   return (
-//     <html lang="en" suppressHydrationWarning>
-//       <head ><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" /></head>
-//       <body className={inter.className}>
-//         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-//           {children}
-//         </ThemeProvider>
-//       </body>
-//     </html>
-//   )
-// }
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,6 +26,7 @@ export default function RootLayout({
       <body className="font-cursive">
         <ThemeProvider attribute="class" themes={["light", "dark"]} enableSystem disableTransitionOnChange>
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
