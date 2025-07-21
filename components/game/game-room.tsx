@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import type { Socket } from "socket.io-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Loader2, Trophy, Users } from "lucide-react";
+import { Clock, Loader2, Trophy, Users, X } from "lucide-react";
 import DrawingCanvas from "@/components/game/drawing-canvas";
 import ChatBox from "@/components/game/chat-box";
 import GameOver from "@/components/game/game-over";
 import WordSelector from "@/components/game/word-selector";
 import type { Room, GameData, Message } from "@/lib/types";
+import { Button } from "../ui/button";
+import { useRouter } from "next/navigation";
 
 interface GameRoomProps {
   socket: Socket;
@@ -22,10 +24,51 @@ export default function GameRoom({
   room: initialRoom,
   username,
 }: GameRoomProps) {
-  console.log({ socket, initialRoom, username });
+  const router = useRouter();
   const [gameData, setGameData] = useState<GameData | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [gameOver, setGameOver] = useState(false);
+  const [clearCanvasSignal, setClearCanvasSignal] = useState(0);
+
+  useEffect(() => {
+    const handleTurnStarted = (data: any) => {
+      setGameData({
+        room: data.room,
+        currentDrawer: data.currentDrawer,
+        timeLeft: data.timeLeft,
+        isMyTurn: data.currentDrawer === socket.id,
+        gamePhase: data.wordOptions ? "choosing" : "drawing",
+        wordOptions: data.wordOptions,
+      });
+      setMessages([]);
+      setClearCanvasSignal((prev) => prev + 1);
+    };
+
+    const handleTurnEnded = ({ room }: { room: Room }) => {
+      setGameData(
+        (prev) =>
+          prev && {
+            ...prev,
+            room,
+            gamePhase: "choosing",
+            currentDrawer: "",
+            isMyTurn: false,
+            timeLeft: 0,
+            currentWord: "",
+            wordOptions: undefined,
+          }
+      );
+      setClearCanvasSignal((prev) => prev + 1);
+    };
+
+    socket.on("turn-started", handleTurnStarted);
+    socket.on("turn-ended", handleTurnEnded);
+
+    return () => {
+      socket.off("turn-started", handleTurnStarted);
+      socket.off("turn-ended", handleTurnEnded);
+    };
+  }, [socket]);
 
   useEffect(() => {
     socket.on("turn-started", (data) => {
@@ -166,7 +209,7 @@ export default function GameRoom({
   const currentPlayer = gameData.room.players.find(
     (p) => p.id === gameData.currentDrawer
   );
-  console.log({ gameData, currentPlayer });
+  console.log({ gameData });
 
   return (
     <div className="min-h-screen bg-yellow-200 p-4">
@@ -191,9 +234,23 @@ export default function GameRoom({
                   </span>
                 </div>
               </div>
+              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    router.push("/");
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 <span>Room: {gameData.room.code}</span>
+              </div>
               </div>
             </div>
           </CardContent>
@@ -201,7 +258,7 @@ export default function GameRoom({
 
         {/* Word Selection or Game Status */}
         <Card>
-          <CardContent className="p-4 text-center">
+          <CardContent className="p-4 text-center">   
             {gameData.gamePhase === "choosing" &&
               gameData.isMyTurn &&
               gameData.wordOptions && (
@@ -282,6 +339,7 @@ export default function GameRoom({
               socket={socket}
               roomCode={gameData.room.code}
               isDrawer={gameData.isMyTurn && gameData.gamePhase === "drawing"}
+              clearSignal={clearCanvasSignal}
             />
           </div>
 

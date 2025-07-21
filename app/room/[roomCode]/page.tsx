@@ -21,8 +21,6 @@ export default function RoomPage() {
   const username = searchParams.get("username") || "";
 
   const [socket, setSocket] = useState<Socket | null>(null);
-
-
   const [room, setRoom] = useState<Room | null>(null);
   const [gameState, setGameState] = useState("waiting");
   const [isLoading, setIsLoading] = useState(true);
@@ -40,17 +38,23 @@ export default function RoomPage() {
     const socketInstance = initializeSocket();
     setSocket(socketInstance);
 
-    const handleRoomJoined = (data:any) => {
+    // const handleRoomJoined = (data:any) => {
+    //   console.log("[Socket] room-joined", data);
+    //   setRoom(data.room);
+
+    //   // Use gameState if provided, or infer from gameStarted
+    //   if (data.room.gameState) {
+    //     setGameState(data.room.gameState);
+    //   } else if (typeof data.room.gameStarted === "boolean") {
+    //     setGameState(data.room.gameStarted ? "playing" : "waiting");
+    //   }
+
+    //   setIsLoading(false);
+    // };
+   const handleRoomJoined = (data: { room: Room }) => {
       console.log("[Socket] room-joined", data);
       setRoom(data.room);
-
-      // Use gameState if provided, or infer from gameStarted
-      if (data.room.gameState) {
-        setGameState(data.room.gameState);
-      } else if (typeof data.room.gameStarted === "boolean") {
-        setGameState(data.room.gameStarted ? "playing" : "waiting");
-      }
-
+      setGameState(data.room.gameState || (data.room.gameStarted ? "playing" : "waiting"));
       setIsLoading(false);
     };
 
@@ -60,6 +64,13 @@ export default function RoomPage() {
       if (data.room.gameState) {
         setGameState(data.room.gameState);
       }
+      setIsLoading(false);
+    };
+
+      const handleCorrectGuess = (data: { room: Room }) => {
+      console.log("[Socket] correct-guess", data);
+      setRoom(data.room);
+      setGameState(data.room.gameState || "finished");
       setIsLoading(false);
     };
 
@@ -101,6 +112,7 @@ export default function RoomPage() {
     // Set up event listeners
     socketInstance.on("room-joined", handleRoomJoined);
     socketInstance.on("game-update", handleGameUpdate);
+    socketInstance.on("correct-guess", handleCorrectGuess);
     socketInstance.on("room-not-found", handleRoomNotFound);
     socketInstance.on("error", handleError);
     socketInstance.on("connect", handleConnect);
@@ -124,14 +136,14 @@ export default function RoomPage() {
     return () => {
       socketInstance.off("room-joined", handleRoomJoined);
       socketInstance.off("game-update", handleGameUpdate);
+      socketInstance.off("correct-guess", handleCorrectGuess);
       socketInstance.off("room-not-found", handleRoomNotFound);
       socketInstance.off("error", handleError);
       socketInstance.off("connect", handleConnect);
       socketInstance.off("disconnect", handleDisconnect);
       socketInstance.off("reconnect", handleReconnect);
-      // Don't disconnect the socket here - let it persist for the session
     };
-  }, [roomCode, username, toast, router]);
+  }, [roomCode, username, router]);
 
   if (isLoading) {
     return (

@@ -41,7 +41,7 @@ export default function ChatBox({ messages, onSendMessage, disabled, currentWord
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="w-4 h-4" />
-          Chat
+          Chatdd
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col space-y-4">

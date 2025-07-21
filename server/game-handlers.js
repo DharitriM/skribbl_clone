@@ -13,6 +13,8 @@ function startNextTurn(roomCode, io, rooms) {
   const room = rooms.get(roomCode)
   if (!room) return
 
+  io.to(roomCode).emit("canvas-cleared")
+  console.log(`[DEBUG] Starting next turn in room ${roomCode}`)
   if (room.currentRound >= room.maxRounds) {
     // Game finished
     room.gameState = "finished"
@@ -30,7 +32,7 @@ function startNextTurn(roomCode, io, rooms) {
     room,
     currentDrawer: currentDrawer.id,
     wordOptions: currentDrawer.isBot ? null : wordOptions,
-    timeLeft: 60,
+    timeLeft: 30,   
   })
 
   // If it's a bot's turn, auto-choose word
@@ -43,7 +45,7 @@ function startNextTurn(roomCode, io, rooms) {
       room.currentWord = randomWord
       room.turnStartTime = Date.now()
 
-      io.to(roomCode).emit("word-chosen", { word: randomWord, timeLeft: 60 })
+      io.to(roomCode).emit("word-chosen", { word: randomWord, timeLeft: 30 })
       startTurnTimer(roomCode, io, rooms)
 
       // Bot doesn't draw, so we'll just wait for the timer to expire
@@ -61,7 +63,7 @@ function startTurnTimer(roomCode, io, rooms) {
   const room = rooms.get(roomCode)
   if (!room) return
 
-  let timeLeft = 60
+  let timeLeft = 30
   const timer = setInterval(() => {
     timeLeft--
     io.to(roomCode).emit("timer-update", { timeLeft })
@@ -85,6 +87,8 @@ function endCurrentTurn(roomCode, io, rooms) {
   const room = rooms.get(roomCode)
   if (!room) return
 
+    io.to(roomCode).emit("canvas-cleared", { clear: true });
+
   if (room.timer) {
     clearInterval(room.timer)
     room.timer = null
@@ -98,13 +102,61 @@ function endCurrentTurn(roomCode, io, rooms) {
     room.currentRound++
   }
 
-  io.to(roomCode).emit("turn-ended", { room })
+  // io.to(roomCode).emit("turn-ended", { room })
 
-  // Start next turn after a short delay
-  setTimeout(() => {
-    startNextTurn(roomCode, io, rooms)
-  }, 3000)
+  // // Start next turn after a short delay
+  // setTimeout(() => {
+  //   startNextTurn(roomCode, io, rooms)
+  // }, 3000)
+
+   setTimeout(() => {
+    io.to(roomCode).emit("turn-ended", { room });
+    
+    // 4. Start next turn after another delay
+    setTimeout(() => {
+      startNextTurn(roomCode, io, rooms);
+    }, 1000);
+  }, 500);
 }
+
+// function endCurrentTurn(roomCode, io, rooms) {
+//   const room = rooms.get(roomCode);
+//   if (!room) return;
+
+//   // Clear interval safely
+//   if (room.timer) {
+//     clearInterval(room.timer);
+//     room.timer = null;
+//   }
+
+//   // Create a clean room object to emit
+//   const roomData = {
+//     code: room.code,
+//     players: room.players.map(p => ({
+//       id: p.id,
+//       username: p.username,
+//       score: p.score,
+//       isBot: p.isBot || false
+//     })),
+//     currentRound: room.currentRound,
+//     maxRounds: room.maxRounds,
+//     drawerIndex: room.drawerIndex,
+//     currentDrawer: null, // Clear current drawer
+//     currentWord: null   // Clear current word
+//   };
+
+//   // Update the room state
+//   Object.assign(room, roomData);
+
+//   // Emit events with clean data
+//   io.to(roomCode).emit("canvas-cleared");
+//   io.to(roomCode).emit("turn-ended", { room: roomData });
+
+//   // Start next turn after delay
+//   setTimeout(() => {
+//     startNextTurn(roomCode, io, rooms);
+//   }, 2000);
+// }
 
 /**
  * Handle player connection and socket events
@@ -229,7 +281,7 @@ function handlePlayerConnection(socket, io, rooms) {
     room.currentWord = word;
     room.turnStartTime = Date.now();
 
-    io.to(roomCode).emit("word-chosen", { word, timeLeft: 60 });
+    io.to(roomCode).emit("word-chosen", { word, timeLeft: 30 });
 
     startTurnTimer(roomCode, io, rooms);
 
@@ -245,6 +297,7 @@ function handlePlayerConnection(socket, io, rooms) {
 
   socket.on("clear-canvas", ({ roomCode }) => {
     socket.to(roomCode).emit("canvas-cleared");
+    socket.emit("canvas-cleared");
   });
 
   socket.on("chat-message", ({ roomCode, message }) => {
@@ -255,12 +308,23 @@ function handlePlayerConnection(socket, io, rooms) {
     if (!player) return;
 
     if (
-      room.currentWord &&
+      // room.currentWord &&
       message.toLowerCase().trim() === room.currentWord.toLowerCase()
     ) {
+      try {
       const timeElapsed = Date.now() - room.turnStartTime;
       const score = Math.max(100 - Math.floor(timeElapsed / 600), 10);
       player.score += score;
+
+      const roomData = {
+        ...room,
+        players: room.players.map(p => ({
+          id: p.id,
+          username: p.username,
+          score: p.score,
+          isBot: p.isBot || false
+        }))
+      };
 
       io.to(roomCode).emit("correct-guess", {
         username: player.username,
@@ -271,7 +335,11 @@ function handlePlayerConnection(socket, io, rooms) {
 
       setTimeout(() => {
         endCurrentTurn(roomCode, io, rooms);
-      }, 2000);
+      }, 1500);
+    } catch (error) {
+      console.error("[ERROR] Failed to process correct guess:", error);
+      // io.to(roomCode).emit("error", { message: "Failed to process guess" });
+    }
     } else {
       io.to(roomCode).emit("chat-message", {
         username: player.username,
